@@ -2,13 +2,33 @@
 
 var makerjs = require('makerjs');
 
+//FOR OBJs
+// const objList = objString.split('\n').filter((item) =>
+//     item.substring(0, 2) === 'v ').map((item) =>
+//         item.split(' ')).map((item) =>
+//             [parseFloat(item[1]), parseFloat(item[2]), parseFloat(item[3])]);
 
-const objList = objString.split('\n').filter((item) =>
-    item.substring(0, 2) === 'v ').map((item) =>
-        item.split(' ')).map((item) =>
-            [parseFloat(item[1]), parseFloat(item[2]), parseFloat(item[3])]);
+// console.log(objList);
 
-console.log(objList);
+let objList = parsedList;
+
+const miniObjList = [];
+
+objList.forEach((item) => {
+
+    const newRad = Math.sqrt(Math.pow(item[0], 2) + Math.pow(item[1], 2));
+
+    if (newRad < 0.640 && newRad > 0.620) {
+        miniObjList.push([item[0], item[1], item[2]]);
+    }
+
+});
+
+console.log(objList.length, miniObjList.length);
+
+
+objList = miniObjList;
+
 
 document.addEventListener('DOMContentLoaded', (event) => {
     const canvas = document.querySelector('#canvas');
@@ -17,15 +37,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
     canvas.height = 1000;
 
     const xy = [];
-    const r = 1.1 / 2;
-    const tol = 0.02;
-    const zTol = 0.02;
+    const r = 0.63;
+    const tol = 0.01;
+    const zTol = 0.01;
     const test = [];
     const maxes = [];
     const mins = [];
     let zMax = -Infinity;
     let zMin = +Infinity;
-    const angleDelta = 0.005;
+    const angleDelta = 0.001;
     const deltaC = r * angleDelta;
 
     objList.forEach((item) => {
@@ -37,6 +57,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
         }
     });
 
+    console.log(zMax, zMin);
+
     const objLength = objList.length;
     for (let rot = 0; rot <= 2 * Math.PI; rot += angleDelta) {
 
@@ -45,7 +67,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         let max = -Infinity;
 
         loop1:
-        for (let z = zMax; z >= 0; z -= 0.005) {
+        for (let z = zMax; z >= 0; z -= 0.003) {
             for (let i = 0; i < objLength; i += 1) {
                 if (objList[i][0] < x + tol &&
                     objList[i][0] > x - tol &&
@@ -58,7 +80,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 };
             };
         }
-        maxes.push(max);
+
+        if (max === -Infinity) {
+            maxes.push(maxes[maxes.length - 1]);
+        } else {
+            maxes.push(max);
+        }
 
         let min = +Infinity;
         loop2:
@@ -75,7 +102,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
                 };
             };
         }
-        mins.push(min);
+        if (min === Infinity) {
+            mins.push(mins[mins.length - 1]);
+        } else {
+            mins.push(min);
+        }
+
     }
 
     const points = [];
@@ -86,62 +118,44 @@ document.addEventListener('DOMContentLoaded', (event) => {
             points.push([i * deltaC, maxes[i]])
         }
         for (let i = 0; i < mins.length; i += 1) {
-            pointsMin.push([i * deltaC, (-Math.abs(mins[i]) + 5)])
+            pointsMin.push([i * deltaC, (mins[i])])
         }
     })();
 
-    const sparsePoints = [points[0]];
 
-    for (let i = 1; i < points.length; i += 1) {
-        if (!(points[i][1] === points[i - 1][1])) {
-            sparsePoints.push(points[i]);
-        }
-    }
 
     ctx.beginPath();
-    let canvasPoints = [];
-    let canvasPointsMin = [];
-    (function convertPointsToCanvasSpace() {
-        canvasPoints = points.map((point) => {
-            return [point[0] * 100, point[1] * 100]
-        });
-        canvasPointsMin = pointsMin.map((point) => {
-            return [point[0] * 100, Math.abs(point[1]) * 100 + 50]
-        });
-    })();
-
-
-    (function drawSideLines() {
-        ctx.moveTo(canvasPointsMin[canvasPointsMin.length - 1][0], canvasPointsMin[canvasPointsMin.length - 1][1]);
-        ctx.lineTo(canvasPoints[canvasPoints.length - 1][0], canvasPoints[canvasPoints.length - 1][1]);
-
-        ctx.moveTo(canvasPointsMin[0][0], canvasPointsMin[0][1]);
-        ctx.lineTo(canvasPoints[0][0], canvasPoints[0][1]);
-    })();
 
 
     (function drawCanvas() {
-        ctx.moveTo(canvasPoints[0][0], canvasPoints[0][1]);
-        canvasPoints.forEach((point) => {
-            ctx.lineTo(point[0], point[1]);
+
+        ctx.moveTo(pointsMin[0][0] * 70, pointsMin[0][1] * 70 + 1000);
+        pointsMin.forEach((point) => {
+            ctx.lineTo(point[0] * 70, point[1] * 70 + 1000);
         });
-        ctx.moveTo(canvasPointsMin[0][0], canvasPointsMin[0][1]);
-        canvasPointsMin.forEach((point) => {
-            ctx.lineTo(point[0], point[1]);
+
+        points.reverse().forEach((point) => {
+            ctx.lineTo(point[0] * 70, point[1] * 70);
         });
+
+        ctx.lineTo(pointsMin[0][0] * 70, pointsMin[0][1] * 70 + 1000);
+
     })();
 
     ctx.stroke();
 
 
 
-    const allPoints = [...pointsMin, ...points.reverse(), pointsMin[0]];
+    console.log(pointsMin);
+    const allPoints = [...pointsMin, ...points];
     let pointsString = '';
     allPoints.forEach((point) => {
-        pointsString += ` ${point[0]} ${point[1]},`
+        pointsString += ` ${point[0].toFixed(5)} ${point[1].toFixed(5)},`
     })
 
-    var model = makerjs.model.mirror(new makerjs.models.ConnectTheDots(false, pointsString), false, true);
+    console.log(pointsString);
+
+    var model = new makerjs.models.ConnectTheDots(true, pointsString);
     console.log(makerjs.exporter.toDXF(model));
 
 })
